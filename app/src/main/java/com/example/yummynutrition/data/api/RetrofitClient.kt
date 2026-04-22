@@ -16,4 +16,12 @@ object RetrofitClient {
             .baseUrl("https://www.themealdb.com/api/json/v1/1/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+
+    fun getBackendInstance(): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("http://10.0.2.2:3002/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
 }
+

@@ -2,6 +2,7 @@ package com.example.yummynutrition.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.yummynutrition.data.api.StatsResponse
 import com.example.yummynutrition.data.model.FoodItem
 import com.example.yummynutrition.data.model.RecipeItem
 import com.example.yummynutrition.data.repository.AppRepository
@@ -22,6 +23,15 @@ class MainViewModel : ViewModel() {
     private val _recipes = MutableStateFlow<List<RecipeItem>>(emptyList())
     val recipes: StateFlow<List<RecipeItem>> = _recipes
 
+    private val _stats = MutableStateFlow<StatsResponse?>(null)
+    val stats: StateFlow<StatsResponse?> = _stats
+
+    fun loadStats() {
+        viewModelScope.launch {
+            _stats.value = repo.getStats()
+        }
+    }
+
     private val _nutrition = MutableStateFlow<FoodItem?>(null)
     val nutrition: StateFlow<FoodItem?> = _nutrition
 
@@ -41,7 +51,11 @@ class MainViewModel : ViewModel() {
 
     fun getNutrition(food: String) {
         viewModelScope.launch {
-            _nutrition.value = repo.getNutrition(food)
+            val result = repo.getNutrition(food)
+
+            println("DEBUG RESULT: $result")
+
+            _nutrition.value = result
         }
     }
 
@@ -119,6 +133,12 @@ class MainViewModel : ViewModel() {
             val fats = cartItem.foodItem.nutrientValue("Total lipid", "Fat").toInt()
             fats * cartItem.quantity
         }.toInt()
+    }
+
+    fun saveFood(food: FoodItem) {
+        viewModelScope.launch {
+            repo.saveFood(food)
+        }
     }
 
     fun getCartItemCount(): Int {

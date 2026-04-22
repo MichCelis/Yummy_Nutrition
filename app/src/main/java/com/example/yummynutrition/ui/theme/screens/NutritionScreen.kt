@@ -137,6 +137,13 @@ fun NutritionScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    if (food == null && query.isNotBlank()) {
+                        Text(
+                            text = "No results found",
+                            color = Color.Red
+                        )
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -174,6 +181,10 @@ fun NutritionScreen(
                     Button(
                         onClick = {
                             viewModel.addToCart(item, quantity)
+                            repeat(quantity) {
+                                viewModel.saveFood(item)
+                            }
+                            viewModel.loadStats()
                             quantity = 1
                         },
                         modifier = Modifier.fillMaxWidth(),

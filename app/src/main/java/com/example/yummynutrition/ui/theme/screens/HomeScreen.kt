@@ -1,6 +1,8 @@
 package com.example.yummynutrition.ui.theme.screens
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -43,11 +46,16 @@ fun HomeScreen(
     val context = LocalContext.current
     val savedName by UserPrefs.nameFlow(context).collectAsState(initial = "")
     val cart by viewModel.cart.collectAsState()
+    val stats by viewModel.stats.collectAsState()
+
     val totalCalories = viewModel.getCartTotalCalories()
     val totalProtein = viewModel.getCartTotalProtein()
     val totalCarbs = viewModel.getCartTotalCarbs()
     val totalFats = viewModel.getCartTotalFats()
 
+    LaunchedEffect(Unit) {
+        viewModel.loadStats()
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -85,7 +93,7 @@ fun HomeScreen(
                     color = md_theme_light_primary
                 )
                 Text(
-                    "${cart.size} items in cart",
+                    "${stats?.mealsToday ?: 0} meals today",
                     color = Color(0xFF757575),
                     style = MaterialTheme.typography.labelLarge
                 )
@@ -163,11 +171,28 @@ fun HomeScreen(
 
 @Composable
 fun MacroBar(label: String, value: Int, barColor: Color) {
-    val progress = (value / 200f).coerceIn(0f, 1f)
+
+    val max = when (label) {
+        "Protein" -> 100f
+        "Carbohydrates" -> 300f
+        "Fats" -> 70f
+        else -> 100f
+    }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = (value / max).coerceIn(0f, 1f),
+        animationSpec = tween(800), // animación suave
+        label = ""
+    )
 
     Column {
-        Text(label, color = Color(0xFF424242))
+        Text(
+            text = "$label: $value g",
+            color = Color(0xFF424242)
+        )
+
         Spacer(modifier = Modifier.height(6.dp))
+
         Row(
             modifier = Modifier
                 .height(14.dp)
@@ -177,7 +202,7 @@ fun MacroBar(label: String, value: Int, barColor: Color) {
             Spacer(
                 modifier = Modifier
                     .height(14.dp)
-                    .fillMaxWidth(progress)
+                    .fillMaxWidth(animatedProgress)
                     .background(barColor, RoundedCornerShape(12.dp))
             )
         }
