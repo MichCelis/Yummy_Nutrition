@@ -1,30 +1,31 @@
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
-const { Pool } = require("pg");
 require("dotenv").config();
+const { connectWithRetry } = require("./db");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const db = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: String(process.env.DB_PASSWORD),
-  database: process.env.DB_NAME
-});
+let db;
 
-db.query(`
-CREATE TABLE IF NOT EXISTS foods (
-  id SERIAL PRIMARY KEY,
-  query VARCHAR(100) UNIQUE,
-  results JSONB
-)
-`).then(() => {
-  console.log("Tabla foods lista");
-});
+async function startServer() {
+  db = await connectWithRetry();
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS foods (
+      id SERIAL PRIMARY KEY,
+      query VARCHAR(100) UNIQUE,
+      results JSONB
+    )
+  `);
+  console.log("✅ Tabla foods lista");
+
+  app.listen(process.env.PORT, () => {
+    console.log("Food Service PRO corriendo 3002");
+  });
+}
 
 app.get("/", (req, res) => {
   res.json({ message: "Food Service PRO 🥗" });
@@ -56,7 +57,7 @@ app.get("/foods/search", async (req, res) => {
       }
     );
 
-    const foods = response.data.foods.slice(0,10).map(food => ({
+    const foods = response.data.foods.slice(0, 10).map(food => ({
       name: food.description,
       calories:
         food.foodNutrients.find(n => n.nutrientName === "Energy")?.value || 0,
@@ -83,6 +84,7 @@ app.get("/foods/search", async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT, () => {
-  console.log("Food Service PRO corriendo 3002");
+startServer().catch(err => {
+  console.error("❌ Error fatal:", err);
+  process.exit(1);
 });

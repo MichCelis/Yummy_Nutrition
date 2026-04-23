@@ -13,3 +13,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Variables de entorno con credenciales
+backend/*/.env
+backend/*/node_modules
+node_modules
+*.log
+.DS_Store

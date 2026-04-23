@@ -1,50 +1,77 @@
 const express = require("express");
 const cors = require("cors");
+const morgan = require("morgan");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
 const app = express();
 
 app.use(cors());
+app.use(morgan("dev"));
+
+// URLs de los servicios (usa variables de entorno si existen, sino defaults para Docker)
+const AUTH_URL    = process.env.AUTH_SERVICE_URL    || "http://auth-service:3001";
+const FOOD_URL    = process.env.FOOD_SERVICE_URL    || "http://food-service:3002";
+const RECIPE_URL  = process.env.RECIPE_SERVICE_URL  || "http://recipe-service:3003";
+const LOG_URL     = process.env.LOG_SERVICE_URL     || "http://log-service:3004";
+const STATS_URL   = process.env.STATS_SERVICE_URL   || "http://stats-service:3005";
 
 app.get("/", (req, res) => {
   res.json({
-    message: "API Gateway funcionando 🌐"
+    message: "YummyNutrition API Gateway 🌐",
+    version: "1.0.0",
+    services: {
+      auth:    "/api/auth/*",
+      foods:   "/api/foods/*",
+      recipes: "/api/recipes/*",
+      logs:    "/api/logs/*",
+      stats:   "/api/stats/*"
+    }
   });
 });
 
-/* AUTH */
-app.use("/auth", createProxyMiddleware({
-  target: "http://localhost:3001",
-  changeOrigin: true,
-  pathRewrite: {
-    "^/auth": ""
-  }
-}));
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
-/* FOOD */
-app.use("/foods", createProxyMiddleware({
-  target: "http://localhost:3002",
+app.use("/api/auth", createProxyMiddleware({
+  target: AUTH_URL,
   changeOrigin: true
 }));
 
-/* RECIPES */
-app.use("/recipes", createProxyMiddleware({
-  target: "http://localhost:3003",
+app.use("/api/foods", createProxyMiddleware({
+  target: `${FOOD_URL}/foods`,
   changeOrigin: true
 }));
 
-/* LOGS */
-app.use("/logs", createProxyMiddleware({
-  target: "http://localhost:3004",
+app.use("/api/recipes", createProxyMiddleware({
+  target: `${RECIPE_URL}/recipes`,
   changeOrigin: true
 }));
 
-/* STATS */
-app.use("/stats", createProxyMiddleware({
-  target: "http://localhost:3005",
+app.use("/api/logs", createProxyMiddleware({
+  target: `${LOG_URL}/logs`,
   changeOrigin: true
 }));
 
-app.listen(3000, () => {
-  console.log("Gateway corriendo en puerto 3000");
+app.use("/api/stats", createProxyMiddleware({
+  target: `${STATS_URL}/stats`,
+  changeOrigin: true
+}));
+
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Ruta no encontrada",
+    path: req.originalUrl
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🌐 API Gateway corriendo en http://localhost:${PORT}`);
+  console.log(`🔀 Redirigiendo a:`);
+  console.log(`   auth:    ${AUTH_URL}`);
+  console.log(`   food:    ${FOOD_URL}`);
+  console.log(`   recipe:  ${RECIPE_URL}`);
+  console.log(`   log:     ${LOG_URL}`);
+  console.log(`   stats:   ${STATS_URL}`);
 });

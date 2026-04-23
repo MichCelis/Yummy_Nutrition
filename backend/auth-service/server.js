@@ -2,33 +2,16 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { Pool } = require("pg");
 require("dotenv").config();
+const { connectWithRetry } = require("./db");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const db = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
-});
+let db;
 
-db.query(`
-CREATE TABLE IF NOT EXISTS users (
- id SERIAL PRIMARY KEY,
- name VARCHAR(100),
- email VARCHAR(100) UNIQUE,
- password TEXT
-)
-`).then(() => {
-  console.log("Tabla users lista");
-}).catch(err => {
-  console.log("Error tabla:", err);
-});
+// ==================== ENDPOINTS ====================
 
 app.get("/", (req, res) => {
   res.json({ message: "Auth real funcionando 🚀" });
@@ -105,6 +88,27 @@ app.get("/profile", verificarToken, (req, res) => {
   });
 });
 
-app.listen(process.env.PORT, () => {
-  console.log("Auth Service PRO corriendo");
+// ==================== ARRANQUE DEL SERVIDOR ====================
+
+async function startServer() {
+  db = await connectWithRetry();
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100),
+      email VARCHAR(100) UNIQUE,
+      password TEXT
+    )
+  `);
+  console.log("✅ Tabla users lista");
+
+  app.listen(process.env.PORT, () => {
+    console.log("Auth Service PRO corriendo");
+  });
+}
+
+startServer().catch(err => {
+  console.error("❌ Error fatal:", err);
+  process.exit(1);
 });

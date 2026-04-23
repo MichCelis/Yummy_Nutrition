@@ -1,0 +1,178 @@
+services:
+
+  # ==================== BASES DE DATOS ====================
+  # Una instancia de PostgreSQL por servicio (Database per Service)
+
+  auth-db:
+    image: postgres:16
+    container_name: yummy-auth-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_DB: authdb
+    volumes:
+      - auth-data:/var/lib/postgresql/data
+    networks:
+      - yummy-net
+
+  food-db:
+    image: postgres:16
+    container_name: yummy-food-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_DB: fooddb
+    volumes:
+      - food-data:/var/lib/postgresql/data
+    networks:
+      - yummy-net
+
+  recipe-db:
+    image: postgres:16
+    container_name: yummy-recipe-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_DB: recipedb
+    volumes:
+      - recipe-data:/var/lib/postgresql/data
+    networks:
+      - yummy-net
+
+  log-db:
+    image: postgres:16
+    container_name: yummy-log-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_DB: logdb
+    volumes:
+      - log-data:/var/lib/postgresql/data
+    networks:
+      - yummy-net
+
+  stats-db:
+    image: postgres:16
+    container_name: yummy-stats-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_DB: statsdb
+    volumes:
+      - stats-data:/var/lib/postgresql/data
+    networks:
+      - yummy-net
+
+  # ==================== MICROSERVICIOS ====================
+
+  auth-service:
+    build: ./backend/auth-service
+    container_name: yummy-auth-service
+    environment:
+      PORT: 3001
+      JWT_SECRET: michelle_super_secret
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: "1234"
+      DB_NAME: authdb
+    depends_on:
+      - auth-db
+    networks:
+      - yummy-net
+
+  food-service:
+    build: ./backend/food-service
+    container_name: yummy-food-service
+    environment:
+      PORT: 3002
+      USDA_API_KEY: 9uPQVDffEjdSd3zW5Y3GGxrs4IDWXisuAA9aY2vc
+      DB_HOST: food-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: "1234"
+      DB_NAME: fooddb
+    depends_on:
+      - food-db
+    networks:
+      - yummy-net
+
+  recipe-service:
+    build: ./backend/recipe-service
+    container_name: yummy-recipe-service
+    environment:
+      PORT: 3003
+      DB_HOST: recipe-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: "1234"
+      DB_NAME: recipedb
+    depends_on:
+      - recipe-db
+    networks:
+      - yummy-net
+
+  log-service:
+    build: ./backend/log-service
+    container_name: yummy-log-service
+    environment:
+      PORT: 3004
+      JWT_SECRET: michelle_super_secret
+      DB_HOST: log-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: "1234"
+      DB_NAME: logdb
+    depends_on:
+      - log-db
+    networks:
+      - yummy-net
+
+  stats-service:
+    build: ./backend/stats-service
+    container_name: yummy-stats-service
+    environment:
+      PORT: 3005
+      JWT_SECRET: michelle_super_secret
+      LOG_SERVICE_URL: http://log-service:3004
+      DB_HOST: stats-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: "1234"
+      DB_NAME: statsdb
+    depends_on:
+      - stats-db
+      - log-service
+    networks:
+      - yummy-net
+
+  # ==================== API GATEWAY ====================
+
+  gateway:
+    build: ./backend/gateway
+    container_name: yummy-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+    depends_on:
+      - auth-service
+      - food-service
+      - recipe-service
+      - log-service
+      - stats-service
+    networks:
+      - yummy-net
+
+# ==================== REDES Y VOLÚMENES ====================
+
+networks:
+  yummy-net:
+    driver: bridge
+
+volumes:
+  auth-data:
+  food-data:
+  recipe-data:
+  log-data:
+  stats-data:
