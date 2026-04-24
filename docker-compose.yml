@@ -164,6 +164,19 @@ services:
     networks:
       - yummy-net
 
+
+      # ==================== FRONTEND WEB ====================
+
+  web:
+    build: ./web
+    container_name: yummy-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - gateway
+    networks:
+      - yummy-net
+
 # ==================== REDES Y VOLÚMENES ====================
 
 networks:

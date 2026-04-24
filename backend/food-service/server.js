@@ -58,7 +58,13 @@ app.get("/foods/search", async (req, res) => {
     );
 
     const foods = response.data.foods.slice(0, 10).map(food => ({
+      fdcId: food.fdcId,
       name: food.description,
+      brand: food.brandOwner || food.brandName || null,
+      category: food.foodCategory || null,
+      dataType: food.dataType || null,
+      servingSize: food.servingSize || null,
+      servingUnit: food.servingSizeUnit || "g",
       calories:
         food.foodNutrients.find(n => n.nutrientName === "Energy")?.value || 0,
       protein:
