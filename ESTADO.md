@@ -111,31 +111,30 @@ Yummy_Nutrition/
 ---
 
 
-## 🚧 FRONTEND WEB — EN DESARROLLO
+## ✅ FRONTEND WEB — COMPLETADO
 
-**Objetivo:** Aplicación web SPA que consuma los 5 microservicios a través del API Gateway.
+Aplicación web SPA que consume los 5 microservicios a través del API Gateway.
 
-**Stack tecnológico:**
-- React 18 + Vite
-- React Router v6
-- Axios para comunicación HTTP
-- UI library por definir (Tailwind CSS / Chakra UI)
-- localStorage para persistencia del JWT
+**Stack:**
+- React 18 + Vite + Tailwind CSS v4
+- React Router v6 + Axios
+- Nginx (producción)
 
-**Pantallas planeadas:**
-1. Login / Registro
-2. Dashboard — estadísticas diarias y gráfica semanal
-3. Búsqueda de alimentos (USDA)
-4. Búsqueda de recetas (TheMealDB)
-5. Registro de comidas por tipo (desayuno/comida/cena)
-6. Historial personal
+**Pantallas implementadas:**
+1. ✅ Login / Registro (con JWT persistente en localStorage)
+2. ✅ Dashboard (totales del día + últimas comidas)
+3. ✅ Búsqueda de alimentos (USDA vía food-service)
+4. ✅ Búsqueda de recetas (TheMealDB vía recipe-service, con detalle completo)
+5. ✅ Historial personal (agrupado por fecha, con eliminar)
 
-**Pendientes:**
-- [ ] Inicializar proyecto con Vite
-- [ ] Implementar las 6 pantallas
-- [ ] Dockerfile para el frontend
-- [ ] Integración al docker-compose.yml
-- [ ] Pruebas de integración con backend
+**URLs:**
+- Desarrollo: http://localhost:5173 (Vite con hot reload)
+- Producción: http://localhost:8080 (Nginx en Docker)
+
+**Containerización:**
+- `web/Dockerfile` (multi-stage build: Node para compilar + Nginx para servir)
+- Integrado en `docker-compose.yml` como servicio `yummy-web`
+- Documentación: `web/FRONTEND.md`
 
 ---
 
@@ -215,7 +214,7 @@ Los servicios se comunican entre sí usando nombres de contenedor como hostname 
 | Centrado en el dominio | ✅ | Cada microservicio encapsula un dominio del negocio |
 | Microservicios (SOA) | ✅ | 5 servicios independientes + API Gateway |
 | Bases de datos distribuidas | ✅ | 5 instancias PostgreSQL (una por servicio) |
-| Multiplataforma (mín. 2) | 🚧 | Android ✅ / Web en desarrollo |
+| Multiplataforma (mín. 2) | ✅ | Android ✅ / Web ✅ |
 | Despliegue en contenedores | ✅ | Docker Compose con 11 contenedores |
 
 ---
