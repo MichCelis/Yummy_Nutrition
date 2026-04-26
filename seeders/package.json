@@ -1,0 +1,21 @@
+{
+  "name": "seeders",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+  "seed:auth": "node auth.seed.js",
+  "seed:food": "node food.seed.js",
+  "seed:recipe": "node recipe.seed.js",
+  "seed:log": "node log.seed.js",
+  "seed": "npm run seed:auth && npm run seed:food && npm run seed:recipe && npm run seed:log"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "pg": "^8.20.0"
+  }
+}

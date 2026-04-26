@@ -10,6 +10,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "1234"
       POSTGRES_DB: authdb
+      TZ: America/Mexico_City
+    ports:
+      - "5433:5432"
     volumes:
       - auth-data:/var/lib/postgresql/data
     networks:
@@ -22,6 +25,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "1234"
       POSTGRES_DB: fooddb
+      TZ: America/Mexico_City
+    ports:
+      - "5434:5432"
     volumes:
       - food-data:/var/lib/postgresql/data
     networks:
@@ -34,6 +40,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "1234"
       POSTGRES_DB: recipedb
+      TZ: America/Mexico_City
+    ports:
+      - "5435:5432"
     volumes:
       - recipe-data:/var/lib/postgresql/data
     networks:
@@ -46,6 +55,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "1234"
       POSTGRES_DB: logdb
+      TZ: America/Mexico_City
+    ports:
+      - "5436:5432"
     volumes:
       - log-data:/var/lib/postgresql/data
     networks:
@@ -58,6 +70,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "1234"
       POSTGRES_DB: statsdb
+      TZ: America/Mexico_City
+    ports:
+      - "5437:5432"
     volumes:
       - stats-data:/var/lib/postgresql/data
     networks:
@@ -76,6 +91,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: "1234"
       DB_NAME: authdb
+      TZ: America/Mexico_City
     depends_on:
       - auth-db
     networks:
@@ -92,6 +108,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: "1234"
       DB_NAME: fooddb
+      TZ: America/Mexico_City
     depends_on:
       - food-db
     networks:
@@ -107,6 +124,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: "1234"
       DB_NAME: recipedb
+      TZ: America/Mexico_City
     depends_on:
       - recipe-db
     networks:
@@ -123,6 +141,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: "1234"
       DB_NAME: logdb
+      TZ: America/Mexico_City
     depends_on:
       - log-db
     networks:
@@ -140,6 +159,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: "1234"
       DB_NAME: statsdb
+      TZ: America/Mexico_City
     depends_on:
       - stats-db
       - log-service
@@ -155,6 +175,7 @@ services:
       - "3000:3000"
     environment:
       PORT: 3000
+      TZ: America/Mexico_City
     depends_on:
       - auth-service
       - food-service
@@ -164,8 +185,7 @@ services:
     networks:
       - yummy-net
 
-
-      # ==================== FRONTEND WEB ====================
+  # ==================== FRONTEND WEB ====================
 
   web:
     build: ./web
