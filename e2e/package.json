@@ -1,0 +1,19 @@
+{
+  "name": "e2e",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+  "open": "cypress open",
+  "test": "cypress run",
+  "test:headed": "cypress run --headed --browser chrome",
+  "demo": "cypress open --env demo=true",
+  "demo:run": "cypress run --headed --browser chrome --env demo=true --no-exit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "cypress": "^15.14.1"
+  }
+}
