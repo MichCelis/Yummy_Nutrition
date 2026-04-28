@@ -79,7 +79,7 @@ fun RecipesScreen(
                     image = recipe.image,
                     onClick = {
                         navController.navigate(
-                            Screen.RecipeDetail.createRoute(recipe.idMeal)
+                            Screen.RecipeDetail.createRoute(recipe.id)
                         )
                     }
                 )
@@ -91,7 +91,7 @@ fun RecipesScreen(
 @Composable
 fun RecipeCard(
     title: String,
-    image: String,
+    image: String?,
     onClick: () -> Unit
 ) {
     Card(

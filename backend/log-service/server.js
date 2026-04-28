@@ -14,9 +14,27 @@ async function startServer() {
       protein NUMERIC,
       carbs NUMERIC,
       fat NUMERIC,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+
+  await db.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'logs'
+          AND column_name = 'created_at'
+          AND data_type = 'timestamp without time zone'
+      ) THEN
+        ALTER TABLE logs
+        ALTER COLUMN created_at TYPE TIMESTAMPTZ
+        USING created_at AT TIME ZONE 'UTC';
+        RAISE NOTICE '✅ Columna created_at migrada a TIMESTAMPTZ';
+      END IF;
+    END $$;
+  `);
+
   console.log("✅ Tabla logs lista");
 
   const app = createApp(db);

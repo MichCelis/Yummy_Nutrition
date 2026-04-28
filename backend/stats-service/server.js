@@ -15,10 +15,29 @@ async function startServer() {
       total_carbs NUMERIC DEFAULT 0,
       total_fat NUMERIC DEFAULT 0,
       meals_count INT DEFAULT 0,
-      calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      calculated_at TIMESTAMPTZ DEFAULT NOW(),
       UNIQUE(user_id, date)
     )
   `);
+
+  // Migración por si la tabla ya existía con TIMESTAMP
+  await db.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'stats_cache'
+          AND column_name = 'calculated_at'
+          AND data_type = 'timestamp without time zone'
+      ) THEN
+        ALTER TABLE stats_cache
+        ALTER COLUMN calculated_at TYPE TIMESTAMPTZ
+        USING calculated_at AT TIME ZONE 'UTC';
+        RAISE NOTICE '✅ Columna calculated_at migrada a TIMESTAMPTZ';
+      END IF;
+    END $$;
+  `);
+
   console.log("✅ Tabla stats_cache lista en statsdb");
 
   const app = createApp(db);

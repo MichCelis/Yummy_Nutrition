@@ -3,11 +3,23 @@ const cors = require("cors");
 const axios = require("axios");
 const jwt = require("jsonwebtoken");
 
-// Helper: formatea una fecha como "YYYY-MM-DD" en hora local del contenedor.
-// IMPORTANTE: el contenedor debe estar en TZ=America/Mexico_City (ver docker-compose.yml)
-function getLocalDateString(date) {
-  const pad = n => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+// Zona horaria del negocio. Se usa para calcular "hoy" desde la perspectiva
+// del usuario, sin importar dónde esté el container o la BD.
+const BUSINESS_TZ = "America/Mexico_City";
+
+/**
+ * Devuelve la fecha YYYY-MM-DD en zona México para una fecha cualquiera.
+ * Importante: usamos Intl.DateTimeFormat porque es la única forma confiable
+ * en Node.js de hacer conversiones de zona horaria sin librerías externas.
+ */
+function getMxDateString(date) {
+  // 'en-CA' nos da formato YYYY-MM-DD directamente
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: BUSINESS_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
 }
 
 function createApp(db) {
@@ -40,7 +52,8 @@ function createApp(db) {
     res.json({
       message: "Stats Service funcionando 📈",
       database: process.env.DB_NAME,
-      logService: LOG_SERVICE_URL
+      logService: LOG_SERVICE_URL,
+      businessTz: BUSINESS_TZ
     });
   });
 
@@ -54,9 +67,13 @@ function createApp(db) {
       const response = await axios.get(`${LOG_SERVICE_URL}/logs/${userId}`);
       const logs = response.data;
 
-      const today = getLocalDateString(new Date());
+      // "Hoy" según la zona del negocio (México), no del container.
+      const today = getMxDateString(new Date());
+
+      // Filtramos los logs cuyo created_at, convertido a zona México,
+      // caiga en el día de hoy.
       const todayLogs = logs.filter(log => {
-        const logDate = getLocalDateString(new Date(log.created_at));
+        const logDate = getMxDateString(new Date(log.created_at));
         return logDate === today;
       });
 
@@ -69,14 +86,14 @@ function createApp(db) {
 
       await db.query(`
         INSERT INTO stats_cache (user_id, date, total_calories, total_protein, total_carbs, total_fat, meals_count, calculated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
         ON CONFLICT (user_id, date) DO UPDATE SET
           total_calories = EXCLUDED.total_calories,
           total_protein  = EXCLUDED.total_protein,
           total_carbs    = EXCLUDED.total_carbs,
           total_fat      = EXCLUDED.total_fat,
           meals_count    = EXCLUDED.meals_count,
-          calculated_at  = CURRENT_TIMESTAMP
+          calculated_at  = NOW()
       `, [userId, today, totals.calories, totals.protein, totals.carbs, totals.fat, todayLogs.length]);
 
       res.json({

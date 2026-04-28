@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import { logService } from "../services/logService";
+import {
+  formatTimeMx,
+  formatDateLongMx,
+  getDayKeyMx,
+} from "../utils/date";
 
 export default function History() {
   const [logs, setLogs] = useState([]);
@@ -44,18 +49,23 @@ export default function History() {
     }
   };
 
-  // Agrupar logs por fecha
+  // Agrupar logs por día (clave YYYY-MM-DD en zona México)
+  // Esto evita el bug de que un log de las 11pm México (5am UTC del día siguiente)
+  // aparezca en el día equivocado.
   const groupedByDate = logs.reduce((acc, log) => {
-    const date = new Date(log.created_at).toLocaleDateString("es-MX", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(log);
+    const dayKey = getDayKeyMx(log.created_at);
+    if (!acc[dayKey]) {
+      acc[dayKey] = {
+        label: formatDateLongMx(log.created_at),
+        items: [],
+      };
+    }
+    acc[dayKey].items.push(log);
     return acc;
   }, {});
+
+  // Ordenar las claves de día descendente (más reciente primero)
+  const sortedDays = Object.keys(groupedByDate).sort().reverse();
 
   // Totales globales
   const totals = logs.reduce(
@@ -134,55 +144,55 @@ export default function History() {
             </div>
 
             {/* Logs agrupados por fecha */}
-            {Object.entries(groupedByDate).map(([date, dayLogs]) => (
-              <section key={date} className="mb-6">
-                <h2 className="text-sm font-semibold text-gray-600 mb-2 capitalize">
-                  {date}
-                </h2>
-                <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
-                  {dayLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="p-4 flex items-center justify-between gap-3"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-800 truncate">
-                          {log.food}
-                        </p>
-                        <div className="flex gap-2 mt-1 text-xs flex-wrap">
-                          <span className="text-emerald-600">
-                            🔥 {Math.round(log.calories)} kcal
-                          </span>
-                          <span className="text-blue-600">
-                            💪 {Number(log.protein).toFixed(1)}g
-                          </span>
-                          <span className="text-amber-600">
-                            🌾 {Number(log.carbs).toFixed(1)}g
-                          </span>
-                          <span className="text-rose-600">
-                            🥑 {Number(log.fat).toFixed(1)}g
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {new Date(log.created_at).toLocaleTimeString("es-MX", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleDelete(log.id, log.food)}
-                        disabled={deletingId === log.id}
-                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
-                        title="Eliminar"
+            {sortedDays.map((dayKey) => {
+              const group = groupedByDate[dayKey];
+              return (
+                <section key={dayKey} className="mb-6">
+                  <h2 className="text-sm font-semibold text-gray-600 mb-2">
+                    {group.label}
+                  </h2>
+                  <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
+                    {group.items.map((log) => (
+                      <div
+                        key={log.id}
+                        className="p-4 flex items-center justify-between gap-3"
                       >
-                        {deletingId === log.id ? "..." : "🗑️"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-800 truncate">
+                            {log.food}
+                          </p>
+                          <div className="flex gap-2 mt-1 text-xs flex-wrap">
+                            <span className="text-emerald-600">
+                              🔥 {Math.round(log.calories)} kcal
+                            </span>
+                            <span className="text-blue-600">
+                              💪 {Number(log.protein).toFixed(1)}g
+                            </span>
+                            <span className="text-amber-600">
+                              🌾 {Number(log.carbs).toFixed(1)}g
+                            </span>
+                            <span className="text-rose-600">
+                              🥑 {Number(log.fat).toFixed(1)}g
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {formatTimeMx(log.created_at)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDelete(log.id, log.food)}
+                          disabled={deletingId === log.id}
+                          className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                          title="Eliminar"
+                        >
+                          {deletingId === log.id ? "..." : "🗑️"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </>
         )}
       </div>

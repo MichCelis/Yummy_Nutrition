@@ -107,7 +107,7 @@ fun RecipeDetailScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    meal.instructions,
+                    text = meal.instructions ?: "Sin instrucciones disponibles",
                     color = Color(0xFF424242),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         lineHeight = 24.sp

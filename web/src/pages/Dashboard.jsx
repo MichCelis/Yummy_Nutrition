@@ -4,6 +4,7 @@ import { statsService } from "../services/statsService";
 import { logService } from "../services/logService";
 import Navbar from "../components/Navbar";
 import MacroCard from "../components/MacroCard";
+import { formatDateTimeMx } from "../utils/date";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -128,10 +129,7 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium text-gray-800">{log.food}</p>
                         <p className="text-xs text-gray-400">
-                          {new Date(log.created_at).toLocaleString("es-MX", {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })}
+                          {formatDateTimeMx(log.created_at)}
                         </p>
                       </div>
                       <div className="text-right">

@@ -9,20 +9,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
-import com.example.yummynutrition.data.prefs.UserPrefs
-import com.example.yummynutrition.ui.theme.screens.*
-import com.example.yummynutrition.viewmodel.MainViewModel
 import com.example.yummynutrition.ui.theme.Meals
-import com.example.yummynutrition.ui.theme.screens.HomeScreen
-import com.example.yummynutrition.ui.theme.screens.RecipesScreen
-import com.example.yummynutrition.ui.theme.screens.NutritionScreen
-import com.example.yummynutrition.ui.theme.screens.RecipeDetailScreen
-import com.example.yummynutrition.ui.theme.screens.SplashScreen
-import com.example.yummynutrition.ui.theme.screens.WelcomeScreen
+import com.example.yummynutrition.ui.theme.screens.*
+import com.example.yummynutrition.viewmodel.AuthViewModel
+import com.example.yummynutrition.viewmodel.MainViewModel
 
 // 🔹 Definición de rutas
 sealed class Screen(
@@ -31,14 +24,13 @@ sealed class Screen(
     val icon: ImageVector?
 ) {
     object Splash : Screen("splash", "", null)
-    object Name : Screen("name", "", null)
-    object Welcome : Screen("welcome", "", null)
+    object Login : Screen("login", "", null)
+    object Register : Screen("register", "", null)
     object Home : Screen("home", "Home", Icons.Default.Home)
     object Recipes : Screen("recipes", "Recipes", Icons.Default.Search)
     object Nutrition : Screen("nutrition", "Nutrition", Icons.Default.Star)
-    object Cart : Screen("cart", "Cart", null)
     object Meals : Screen("meals", "Meals", null)
-
+    object History : Screen("history", "History", null)
     object RecipeDetail : Screen("recipe_detail/{id}", "Detail", null) {
         fun createRoute(id: String) = "recipe_detail/$id"
     }
@@ -47,12 +39,10 @@ sealed class Screen(
 @Composable
 fun AppNavigation(navController: NavHostController) {
 
-    // ✅ ViewModel compartido
     val mainViewModel: MainViewModel = viewModel()
+    val authViewModel: AuthViewModel = viewModel()
 
-    // 🔹 Verificar si hay nombre guardado
-    val context = LocalContext.current
-    val savedName by UserPrefs.nameFlow(context).collectAsState(initial = "")
+    val isLoggedIn by authViewModel.isLoggedIn.collectAsState(initial = false)
 
     // 🔹 Pantallas con BottomBar
     val bottomBarScreens = listOf(
@@ -63,7 +53,6 @@ fun AppNavigation(navController: NavHostController) {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-
     val showBottomBar = bottomBarScreens.any { it.route == currentRoute }
 
     Scaffold(
@@ -81,9 +70,7 @@ fun AppNavigation(navController: NavHostController) {
                                 }
                             },
                             icon = {
-                                screen.icon?.let {
-                                    Icon(it, contentDescription = screen.label)
-                                }
+                                screen.icon?.let { Icon(it, contentDescription = screen.label) }
                             },
                             label = { Text(screen.label) }
                         )
@@ -99,37 +86,44 @@ fun AppNavigation(navController: NavHostController) {
             modifier = Modifier.padding(padding)
         ) {
 
-            // 🔹 Splash (Logo)
+            // 🔹 Splash
             composable(Screen.Splash.route) {
                 SplashScreen {
-                    navController.navigate(Screen.Welcome.route) {
+                    val nextRoute = if (isLoggedIn) Screen.Home.route else Screen.Login.route
+                    navController.navigate(nextRoute) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 }
             }
 
-            // 🔹 Welcome (Bienvenida)
-            composable(Screen.Welcome.route) {
-                WelcomeScreen {
-                    // Si hay nombre, va a Home. Si no, va a NameScreen
-                    val nextRoute = if (savedName.isBlank()) {
-                        Screen.Name.route
-                    } else {
-                        Screen.Home.route
+            // 🔹 Login
+            composable(Screen.Login.route) {
+                LoginScreen(
+                    authViewModel = authViewModel,
+                    onLoginSuccess = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    },
+                    onGoToRegister = {
+                        navController.navigate(Screen.Register.route)
                     }
-                    navController.navigate(nextRoute) {
-                        popUpTo(Screen.Welcome.route) { inclusive = true }
-                    }
-                }
+                )
             }
 
-            // 🔹 NameScreen (Pedir nombre)
-            composable(Screen.Name.route) {
-                NameScreen {
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Name.route) { inclusive = true }
+            // 🔹 Register
+            composable(Screen.Register.route) {
+                RegisterScreen(
+                    authViewModel = authViewModel,
+                    onRegisterSuccess = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    },
+                    onGoToLogin = {
+                        navController.popBackStack()
                     }
-                }
+                )
             }
 
             // 🔹 Home
@@ -153,17 +147,17 @@ fun AppNavigation(navController: NavHostController) {
                 NutritionScreen(viewModel = mainViewModel)
             }
 
-            // 🔹 Cart
-            composable(Screen.Cart.route) {
-                CartScreen(
+            // 🔹 Meals
+            composable(Screen.Meals.route) {
+                Meals()
+            }
+
+            // 🔹 History
+            composable(Screen.History.route) {
+                HistoryScreen(
                     navController = navController,
                     viewModel = mainViewModel
                 )
-            }
-
-            // 🔹 Meals (configuración de comidas)
-            composable(Screen.Meals.route) {
-                Meals()
             }
 
             // 🔹 Detalle receta

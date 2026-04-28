@@ -1,8 +1,8 @@
 package com.example.yummynutrition.ui.theme.screens
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,14 +12,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -30,32 +34,39 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.yummynutrition.data.model.FoodItem
-import com.example.yummynutrition.data.prefs.UserPrefs
+import com.example.yummynutrition.data.auth.SessionManager
 import com.example.yummynutrition.navigation.Screen
 import com.example.yummynutrition.ui.theme.md_theme_light_background
 import com.example.yummynutrition.ui.theme.md_theme_light_primary
 import com.example.yummynutrition.ui.theme.md_theme_light_secondary
+import com.example.yummynutrition.viewmodel.AuthViewModel
 import com.example.yummynutrition.viewmodel.MainViewModel
+import androidx.compose.foundation.clickable
 
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: MainViewModel = viewModel()
+    viewModel: MainViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val savedName by UserPrefs.nameFlow(context).collectAsState(initial = "")
-    val cart by viewModel.cart.collectAsState()
+    // Datos de la sesión activa
+    val savedName by SessionManager.userNameFlow(context).collectAsState(initial = "")
+    val userId by SessionManager.userIdFlow(context).collectAsState(initial = null)
     val stats by viewModel.stats.collectAsState()
 
-    val totalCalories = viewModel.getCartTotalCalories()
-    val totalProtein = viewModel.getCartTotalProtein()
-    val totalCarbs = viewModel.getCartTotalCarbs()
-    val totalFats = viewModel.getCartTotalFats()
+    // Totales reales del backend (vienen de stats-service)
+    val todayCalories = stats?.todayCalories?.toInt() ?: 0
+    val todayProtein = stats?.todayProtein?.toInt() ?: 0
+    val todayCarbs = stats?.todayCarbs?.toInt() ?: 0
+    val todayFats = stats?.todayFat?.toInt() ?: 0
 
-    LaunchedEffect(Unit) {
-        viewModel.loadStats()
+    LaunchedEffect(userId) {
+        if (userId != null) {
+            viewModel.loadStats()
+        }
     }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -64,16 +75,40 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
 
-        Text(
-            text = if (savedName.isNotBlank()) "Hello, $savedName 👋" else "Hello 👋",
-            style = MaterialTheme.typography.headlineMedium,
-            color = Color(0xFF1C1C1C)
-        )
+        // 🔝 Header con saludo y botón de logout
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = if (savedName.isNotBlank()) "Hello, $savedName 👋" else "Hello 👋",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color(0xFF1C1C1C)
+                )
+                Text(
+                    text = "Your nutritional summary today",
+                    color = Color(0xFF616161)
+                )
+            }
 
-        Text(
-            text = "Your nutritional summary today",
-            color = Color(0xFF616161)
-        )
+            IconButton(
+                onClick = {
+                    viewModel.clearAll()      // ← limpia datos viejos
+                    authViewModel.logout()    // ← borra token de DataStore
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ExitToApp,
+                    contentDescription = "Cerrar sesión",
+                    tint = md_theme_light_primary
+                )
+            }
+        }
 
         Card(
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -88,7 +123,7 @@ fun HomeScreen(
             ) {
                 Text("TODAY'S CALORIES", color = Color(0xFF9E9E9E))
                 Text(
-                    "$totalCalories kcal",
+                    "$todayCalories kcal",
                     style = MaterialTheme.typography.headlineLarge,
                     color = md_theme_light_primary
                 )
@@ -117,17 +152,18 @@ fun HomeScreen(
                     color = Color(0xFF1C1C1C)
                 )
 
-                MacroBar("Protein", totalProtein, md_theme_light_primary)
-                MacroBar("Carbohydrates", totalCarbs, md_theme_light_secondary)
-                MacroBar("Fats", totalFats, Color(0xFFFF9800))
+                MacroBar("Protein", todayProtein, md_theme_light_primary)
+                MacroBar("Carbohydrates", todayCarbs, md_theme_light_secondary)
+                MacroBar("Fats", todayFats, Color(0xFFFF9800))
             }
         }
 
         Card(
-            onClick = { navController.navigate(Screen.Cart.route) },
-            shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFC107)),
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(22.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { navController.navigate(Screen.History.route) }
         ) {
             Row(
                 modifier = Modifier
@@ -136,13 +172,20 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Column {
+                    Text(
+                        "Meal History",
+                        color = Color.Black,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        "View all your logged meals",
+                        color = Color(0xFF424242),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 Text(
-                    "My Food Intake",
-                    color = Color.Black,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    "${cart.size}",
+                    "${stats?.mealsToday ?: 0}",
                     color = Color.Black,
                     style = MaterialTheme.typography.headlineSmall
                 )
@@ -181,7 +224,7 @@ fun MacroBar(label: String, value: Int, barColor: Color) {
 
     val animatedProgress by animateFloatAsState(
         targetValue = (value / max).coerceIn(0f, 1f),
-        animationSpec = tween(800), // animación suave
+        animationSpec = tween(800),
         label = ""
     )
 
@@ -207,11 +250,4 @@ fun MacroBar(label: String, value: Int, barColor: Color) {
             )
         }
     }
-}
-
-private fun FoodItem?.nutrientValue(vararg keys: String): Double {
-    val item = this ?: return 0.0
-    return item.foodNutrients
-        .firstOrNull { n -> keys.any { key -> n.nutrientName.contains(key, true) } }
-        ?.value ?: 0.0
 }

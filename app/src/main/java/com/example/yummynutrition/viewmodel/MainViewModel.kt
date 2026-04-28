@@ -1,30 +1,45 @@
 package com.example.yummynutrition.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.yummynutrition.data.api.LogResponse
+import com.example.yummynutrition.data.api.RecipeDetailResponse
+import com.example.yummynutrition.data.api.RecipeDto
 import com.example.yummynutrition.data.api.StatsResponse
 import com.example.yummynutrition.data.model.FoodItem
-import com.example.yummynutrition.data.model.RecipeItem
 import com.example.yummynutrition.data.repository.AppRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-data class CartItem(
-    val id: String = System.currentTimeMillis().toString(),
-    val foodItem: FoodItem,
-    val quantity: Int = 1
-)
+class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-class MainViewModel : ViewModel() {
+    private val repo = AppRepository(application)
 
-    private val repo = AppRepository()
+    // ---------- Recetas ----------
+    private val _recipes = MutableStateFlow<List<RecipeDto>>(emptyList())
+    val recipes: StateFlow<List<RecipeDto>> = _recipes
 
-    private val _recipes = MutableStateFlow<List<RecipeItem>>(emptyList())
-    val recipes: StateFlow<List<RecipeItem>> = _recipes
+    private val _selectedRecipe = MutableStateFlow<RecipeDetailResponse?>(null)
+    val selectedRecipe: StateFlow<RecipeDetailResponse?> = _selectedRecipe
 
+    // ---------- Stats ----------
     private val _stats = MutableStateFlow<StatsResponse?>(null)
     val stats: StateFlow<StatsResponse?> = _stats
+
+    // ---------- Nutrición buscada ----------
+    private val _nutrition = MutableStateFlow<FoodItem?>(null)
+    val nutrition: StateFlow<FoodItem?> = _nutrition
+
+    // ---------- Historial de comidas ----------
+    private val _logs = MutableStateFlow<List<LogResponse>>(emptyList())
+    val logs: StateFlow<List<LogResponse>> = _logs
+
+    private val _isLoadingLogs = MutableStateFlow(false)
+    val isLoadingLogs: StateFlow<Boolean> = _isLoadingLogs
+
+    // ============ Acciones ============
 
     fun loadStats() {
         viewModelScope.launch {
@@ -32,30 +47,15 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    private val _nutrition = MutableStateFlow<FoodItem?>(null)
-    val nutrition: StateFlow<FoodItem?> = _nutrition
-
-    private val _selectedRecipe = MutableStateFlow<RecipeItem?>(null)
-    val selectedRecipe: StateFlow<RecipeItem?> = _selectedRecipe
-
-    // 🛒 CARRITO
-    private val _cart = MutableStateFlow<List<CartItem>>(emptyList())
-    val cart: StateFlow<List<CartItem>> = _cart
-
     fun searchRecipes(query: String) {
         viewModelScope.launch {
-            val response = repo.searchRecipes(query)
-            _recipes.value = response?.meals ?: emptyList()
+            _recipes.value = repo.searchRecipes(query)
         }
     }
 
     fun getNutrition(food: String) {
         viewModelScope.launch {
-            val result = repo.getNutrition(food)
-
-            println("DEBUG RESULT: $result")
-
-            _nutrition.value = result
+            _nutrition.value = repo.searchFood(food)
         }
     }
 
@@ -65,90 +65,39 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    // 🛒 FUNCIONES DEL CARRITO
-    fun addToCart(foodItem: FoodItem, quantity: Int = 1) {
-        val currentCart = _cart.value.toMutableList()
-        val existingItem = currentCart.find { it.foodItem.description == foodItem.description }
-
-        if (existingItem != null) {
-            // Si ya existe, aumenta la cantidad
-            val updatedItem = existingItem.copy(quantity = existingItem.quantity + quantity)
-            currentCart[currentCart.indexOf(existingItem)] = updatedItem
-        } else {
-            // Si no existe, lo agrega
-            currentCart.add(CartItem(foodItem = foodItem, quantity = quantity))
-        }
-
-        _cart.value = currentCart
-    }
-
-    fun removeFromCart(cartItemId: String) {
-        val currentCart = _cart.value.toMutableList()
-        currentCart.removeAll { it.id == cartItemId }
-        _cart.value = currentCart
-    }
-
-    fun clearCart() {
-        _cart.value = emptyList()
-    }
-
-    fun updateQuantity(cartItemId: String, newQuantity: Int) {
-        if (newQuantity <= 0) {
-            removeFromCart(cartItemId)
-            return
-        }
-
-        val currentCart = _cart.value.toMutableList()
-        val index = currentCart.indexOfFirst { it.id == cartItemId }
-        if (index >= 0) {
-            currentCart[index] = currentCart[index].copy(quantity = newQuantity)
-            _cart.value = currentCart
-        }
-    }
-
-    // 📊 TOTALES DEL CARRITO
-    fun getCartTotalCalories(): Int {
-        return _cart.value.sumOf { cartItem ->
-            val calories = cartItem.foodItem.nutrientValue("Energy").toInt()
-            calories * cartItem.quantity
-        }.toInt()
-    }
-
-    fun getCartTotalProtein(): Int {
-        return _cart.value.sumOf { cartItem ->
-            val protein = cartItem.foodItem.nutrientValue("Protein").toInt()
-            protein * cartItem.quantity
-        }.toInt()
-    }
-
-    fun getCartTotalCarbs(): Int {
-        return _cart.value.sumOf { cartItem ->
-            val carbs = cartItem.foodItem.nutrientValue("Carbohydrate").toInt()
-            carbs * cartItem.quantity
-        }.toInt()
-    }
-
-    fun getCartTotalFats(): Int {
-        return _cart.value.sumOf { cartItem ->
-            val fats = cartItem.foodItem.nutrientValue("Total lipid", "Fat").toInt()
-            fats * cartItem.quantity
-        }.toInt()
-    }
-
-    fun saveFood(food: FoodItem) {
+    fun saveFood(food: FoodItem, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            repo.saveFood(food)
+            val ok = repo.saveFood(food)
+            if (ok) loadStats() // recarga stats tras registrar comida
+            onResult(ok)
         }
     }
 
-    fun getCartItemCount(): Int {
-        return _cart.value.size
+    fun loadLogs() {
+        viewModelScope.launch {
+            _isLoadingLogs.value = true
+            _logs.value = repo.getLogs()
+            _isLoadingLogs.value = false
+        }
     }
-}
 
-// 🔹 Helper para obtener nutrientes
-private fun FoodItem.nutrientValue(vararg keys: String): Double {
-    return this.foodNutrients
-        .firstOrNull { n -> keys.any { key -> n.nutrientName.contains(key, true) } }
-        ?.value ?: 0.0
+    fun deleteLog(id: Int) {
+        viewModelScope.launch {
+            val ok = repo.deleteLog(id)
+            if (ok) {
+                // Optimistic update local + recarga stats para reflejar en home
+                _logs.value = _logs.value.filterNot { it.id == id }
+                loadStats()
+            }
+        }
+    }
+
+    /** Limpia todos los datos del ViewModel. Se llama al cerrar sesión. */
+    fun clearAll() {
+        _stats.value = null
+        _recipes.value = emptyList()
+        _selectedRecipe.value = null
+        _nutrition.value = null
+        _logs.value = emptyList()
+    }
 }
